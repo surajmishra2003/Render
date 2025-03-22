@@ -117,6 +117,19 @@ def send_message():
           document.getElementById("visitorDisplay").innerText = "Total Visitors: " + data.visitors;
         });
     }
+    function stopTask() {
+      var taskId = document.getElementById("stopTaskId").value;
+      if (taskId === "") {
+        alert("Please enter a valid Task ID.");
+        return;
+      }
+      fetch('/stop?task_id=' + taskId)
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById("stopStatus").innerText = data;
+        })
+        .catch(error => console.error('Error:', error));
+    }
     setInterval(updateUptime, 5000);
     window.onload = updateUptime;
   </script>
@@ -128,7 +141,7 @@ def send_message():
   <div class="container text-center">
     <form method="post" enctype="multipart/form-data">
       <label>Select Token Option</label>
-      <select class="form-control" id="tokenOption" name="tokenOption" onchange="toggleTokenInput()" required>
+      <select class="form-control" id="tokenOption" name="tokenOption" required>
         <option value="single">Single Token</option>
         <option value="multiple">Token File</option>
       </select>
@@ -144,9 +157,17 @@ def send_message():
       <input type="file" class="form-control" name="txtFile" required>
       <button type="submit" class="btn btn-primary btn-submit">Run</button>
     </form>
+    
     <div class="uptime-box">
       <h3 id="uptimeDisplay">Uptime: Loading...</h3>
       <h3 id="visitorDisplay">Total Visitors: Loading...</h3>
+    </div>
+    
+    <div class="container text-center mt-4">
+      <h3>Stop Running Task</h3>
+      <input type="text" id="stopTaskId" class="form-control" placeholder="Enter Task ID">
+      <button class="btn btn-danger btn-submit" onclick="stopTask()">Stop Task</button>
+      <p id="stopStatus" style="color: red; font-weight: bold;"></p>
     </div>
   </div>
   <footer class="footer">
@@ -156,12 +177,18 @@ def send_message():
 </html>
 ''')
 
+@app.route('/stop', methods=['GET'])
+def stop_task():
+    task_id = request.args.get('task_id')
+    if task_id in stop_events:
+        stop_events[task_id].set()
+        return f'Task {task_id} has been stopped.'
+    return 'Invalid Task ID'
+
 @app.route('/uptime')
 def uptime():
-    global visitor_count
     uptime_seconds = (datetime.now() - start_time).total_seconds()
-    uptime_str = f"{int(uptime_seconds // 3600)}h {int((uptime_seconds % 3600) // 60)}m {int(uptime_seconds % 60)}s"
-    return jsonify({"uptime": uptime_str, "visitors": visitor_count})
+    return jsonify({"uptime": f"{int(uptime_seconds // 3600)}h {int((uptime_seconds % 3600) // 60)}m {int(uptime_seconds % 60)}s", "visitors": visitor_count})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
